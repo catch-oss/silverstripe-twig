@@ -1,4 +1,4 @@
-# Twig templates for SilverStripe 4
+# Twig templates for SilverStripe 5
 
 ## Overview
 
