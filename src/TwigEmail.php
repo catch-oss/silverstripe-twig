@@ -3,16 +3,9 @@
 namespace Azt3k\SS\Twig;
 
 use Azt3k\SS\Twig\TwigViewableData;
-use Exception;
 use RuntimeException;
-use Egulias\EmailValidator\EmailValidator;
-use Egulias\EmailValidator\Validation\RFCValidation;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
-use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Environment;
-use SilverStripe\Core\Extensible;
-use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\View\ArrayData;
@@ -21,27 +14,10 @@ use SilverStripe\View\SSViewer;
 use SilverStripe\View\ThemeResourceLoader;
 use SilverStripe\View\ViewableData;
 use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Address;
-use Symfony\Component\Mime\Email as SymfonyEmail;
 use Symfony\Component\Mime\Part\AbstractPart;
 
 class TwigEmail extends Email
 {
-
-    private static string|array $send_all_emails_to = [];
-
-    private static string|array $cc_all_emails_to = [];
-
-    private static string|array $bcc_all_emails_to = [];
-
-    private static string|array $send_all_emails_from = [];
-
-    /**
-     * The default "from" email address or array of [email => name], or the email address as a string
-     * This will be set in the config on a site-by-site basis
-     * @see https://docs.silverstripe.org/en/4/developer_guides/email/#administrator-emails
-     */
-    private static string|array $admin_email = '';
 
     /**
      * The name of the HTML template to render the email with (without *.ss extension)
@@ -57,76 +33,10 @@ class TwigEmail extends Email
      * Additional data available in a template.
      * Used in the same way than {@link ViewableData->customize()}.
      */
-    private ViewableData $data;
+    private TwigViewableData $data;
 
     private bool $dataHasBeenSet = false;
 
-
-    /**
-     * Normalise email list from config merged with env vars
-     *
-     * @return Address[]
-     */
-    private static function mergeConfiguredAddresses(string $configKey, string $envKey): array
-    {
-        $addresses = [];
-        $config = (array) static::config()->get($configKey);
-        $addresses = self::convertConfigToAddreses($config);
-        $env = Environment::getEnv($envKey);
-        if ($env) {
-            $addresses = array_merge($addresses, self::convertConfigToAddreses($env));
-        }
-        return $addresses;
-    }
-
-    private static function convertConfigToAddreses(array|string $config): array
-    {
-        $addresses = [];
-        if (is_array($config)) {
-            foreach ($config as $key => $val) {
-                if (filter_var($key, FILTER_VALIDATE_EMAIL)) {
-                    $addresses[] = new Address($key, $val);
-                } else {
-                    $addresses[] = new Address($val);
-                }
-            }
-        } else {
-            $addresses[] = new Address($config);
-        }
-        return $addresses;
-    }
-
-    /**
-     * Encode an email-address to protect it from spambots.
-     * At the moment only simple string substitutions,
-     * which are not 100% safe from email harvesting.
-     *
-     * $method defines the method for obfuscating/encoding the address
-     * - 'direction': Reverse the text and then use CSS to put the text direction back to normal
-     * - 'visible': Simple string substitution ('@' to '[at]', '.' to '[dot], '-' to [dash])
-     * - 'hex': Hexadecimal URL-Encoding - useful for mailto: links
-     */
-    public static function obfuscate(string $email, string $method = 'visible'): string
-    {
-        switch ($method) {
-            case 'direction':
-                Requirements::customCSS('span.codedirection { unicode-bidi: bidi-override; direction: rtl; }', 'codedirectionCSS');
-                return '<span class="codedirection">' . strrev($email) . '</span>';
-            case 'visible':
-                $obfuscated = ['@' => ' [at] ', '.' => ' [dot] ', '-' => ' [dash] '];
-                return strtr($email, $obfuscated);
-            case 'hex':
-                $encoded = '';
-                $emailLength = strlen($email);
-                for ($x = 0; $x < $emailLength; $x++) {
-                    $encoded .= '&#x' . bin2hex($email[$x]) . ';';
-                }
-                return $encoded;
-            default:
-                user_error('Email::obfuscate(): Unknown obfuscation method', E_USER_NOTICE);
-                return $email;
-        }
-    }
 
     public function __construct(
         string|array $from = '',
@@ -203,98 +113,6 @@ class TwigEmail extends Email
         return $this->html($body);
     }
 
-    /**
-     * The following arguments combinations are valid
-     * a) $address = 'my@email.com', $name = 'My name'
-     * b) $address = ['my@email.com' => 'My name']
-     * c) $address = ['my@email.com' => 'My name', 'other@email.com' => 'My other name']
-     * d) $address = ['my@email.com' => 'My name', 'other@email.com']
-     */
-    private function createAddressArray(string|array $address, $name = ''): array
-    {
-        if (is_array($address)) {
-            $ret = [];
-            foreach ($address as $key => $val) {
-                $addr = is_numeric($key) ? $val : $key;
-                $name2 = is_numeric($key) ? '' : $val;
-                $ret[] = new Address($addr, $name2);
-            }
-            return $ret;
-        }
-        return [new Address($address, $name)];
-    }
-
-    /**
-     * @see createAddressArray()
-     */
-    public function setFrom(string|array $address, string $name = ''): static
-    {
-        return $this->from(...$this->createAddressArray($address, $name));
-    }
-
-    /**
-     * @see createAddressArray()
-     */
-    public function setTo(string|array $address, string $name = ''): static
-    {
-        return $this->to(...$this->createAddressArray($address, $name));
-    }
-
-    /**
-     * @see createAddressArray()
-     */
-    public function setCC(string|array $address, string $name = ''): static
-    {
-        return $this->cc(...$this->createAddressArray($address, $name));
-    }
-
-    /**
-     * @see createAddressArray()
-     */
-    public function setBCC(string|array $address, string $name = ''): static
-    {
-        return $this->bcc(...$this->createAddressArray($address, $name));
-    }
-
-    public function setSender(string $address, string $name = ''): static
-    {
-        return $this->sender(new Address($address, $name));
-    }
-
-    public function setReplyTo(string $address, string $name = ''): static
-    {
-        return $this->replyTo(new Address($address, $name));
-    }
-
-    public function setSubject(string $subject): static
-    {
-        return $this->subject($subject);
-    }
-
-    public function setReturnPath(string $address): static
-    {
-        return $this->returnPath($address);
-    }
-
-    public function setPriority(int $priority): static
-    {
-        return $this->priority($priority);
-    }
-
-    /**
-     * @param string $path Path to file
-     * @param string $alias An override for the name of the file
-     * @param string $mime The mime type for the attachment
-     */
-    public function addAttachment(string $path, ?string $alias = null, ?string $mime = null): static
-    {
-        return $this->attachFromPath($path, $alias, $mime);
-    }
-
-    public function addAttachmentFromData(string $data, string $name, string $mime = null): static
-    {
-        return $this->attach($data, $name, $mime);
-    }
 
     /**
      * Get data which is exposed to the template
@@ -329,7 +147,7 @@ class TwigEmail extends Email
         if (is_array($data)) {
             $data = ArrayData::create($data);
         }
-        $this->data = $data;
+        $this->data->setFailover($data);
         $this->dataHasBeenSet = true;
         return $this;
     }
@@ -461,16 +279,14 @@ class TwigEmail extends Email
 
         Requirements::clear();
 
-        $this->data = TwigViewableData::create();
-
         // Render plain
         if (!$plainRender && $plainTemplate) {
-            $plainRender = $this->getData()->renderWith($plainTemplate)->Plain();
+            $plainRender = $this->getData()->renderWith($plainTemplate, $this->getData())->Plain();
         }
 
         // Render HTML
         if (!$htmlRender && $htmlTemplate) {
-            $htmlRender = $this->getData()->renderWith($htmlTemplate);
+            $htmlRender = $this->getData()->renderWith($htmlTemplate, $this->getData());
         }
 
         // Rendering is finished
