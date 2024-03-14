@@ -2,7 +2,7 @@
 
 ## Overview
 
-SilverStripe Twig enables the use of the Twig templating engine in SilverStripe 4
+SilverStripe Twig enables the use of the Twig templating engine in SilverStripe 5
 
 If you are not familiar with Twig, check out the [docs](http://twig.sensiolabs.org/).
 
@@ -14,10 +14,10 @@ Create or edit a `composer.json` file in the root of your SilverStripe project, 
 
 ```json
 {
-    "require": {
-        "camspiers/silverstripe-twig": "0.0.*",
-		"camspiers/autoloader-composer-silverstripe": "1.0.*"
-    }
+  "require": {
+    "camspiers/silverstripe-twig": "0.0.*",
+    "camspiers/autoloader-composer-silverstripe": "1.0.*"
+  }
 }
 ```
 
@@ -46,15 +46,16 @@ The PHP 5.3 classes above are actually auto-generated from a trait. To use the t
 ```php
 class Page_Controller extends ContentController
 {
-	use TwigControllerTrait;
+  use TwigControllerTrait;
 }
 ```
+
 or:
 
 ```php
 class MyController extends Controller
 {
-	use TwigControllerTrait;
+  use TwigControllerTrait;
 }
 ```
 
@@ -152,35 +153,32 @@ SilverStripe Twig uses a dependency injection container (an extension of `Pimple
 
 **Options**
 
-* twig.environment_options
-* twig.extensions
-* twig.compilation_cache
-* twig.template_paths
-* twig.controller_variable_name
+- twig.environment_options
+- twig.extensions
+- twig.compilation_cache
+- twig.template_paths
+- twig.controller_variable_name
 
 An example:
 
 `mysite/_config.php`
 
 ```php
-TwigContainer::extendConfig(array(
-	'twig.environment_options' => array(
-        'debug' => true
-    ),
-    'twig.extensions' => array(
-    	'.twig',
-    	'.html'
-    ),
-    'twig.compilation_cache' => BASE_PATH . '/silverstripe-cache',
-    'twig.template_paths' => array(
-    	THEMES_PATH . '/my-theme/templates'
-    ),
-    'twig.controller_variable_name' => 'controller'
-));
+TwigContainer::extendConfig([
+  'twig.environment_options' => [
+    'debug' => true,
+  ],
+  'twig.extensions' => ['.twig', '.html'],
+  'twig.compilation_cache' => BASE_PATH . '/silverstripe-cache',
+  'twig.template_paths' => [THEMES_PATH . '/my-theme/templates'],
+  'twig.controller_variable_name' => 'controller',
+]);
 ```
+
 ### Namespaced paths
 
 Support for twig namesapces can be enabled by adding a `twig.template_namespaced_paths` array to the config. For example.
+
 ```
 TwigContainer::extendConfig([
     "twig.template_namespaced_paths" => [
@@ -189,8 +187,10 @@ TwigContainer::extendConfig([
     ],
 ]);
 ```
+
 This will allow the use of twig files that depend on namespaced paths, for example
 `ExampleThirdPartyModule.twig`
+
 ```
 {% extends "@namespace/component.twig" %}
 {% from "@anotherNamespace/form/form.twig" import form %}
@@ -198,19 +198,21 @@ This will allow the use of twig files that depend on namespaced paths, for examp
 {% from "@anotherNamespace/input/input.twig" import input %}
 
 ```
+
 More info about twig namespaces can be found at
 [https://symfony.com/doc/current/templating/namespaced_paths.html](https://symfony.com/doc/current/templating/namespaced_paths.html)
 
 Any service provided by SilverStripe Twig can be accessed by instantiating the Container.
 
 ```php
-$dic = new TwigContainer;
+$dic = new TwigContainer();
 $dic['twig']->loadTemplate('template.twig')->render();
 ```
 
 See [Pimple](http://pimple.sensiolabs.org/) for more information.
 
 ## Using Twig and Haml together
+
 SilverStripe twig supports the use of haml through the [SilverStripe haml](https://github.com/camspiers/silverstripe-haml) module.
 
 Install the SilverStripe haml module and you are ready to go.
@@ -245,17 +247,17 @@ Example:
 			%span.created #{ c.Created|date("d/m/Y") }
 ```
 
-
 ## Contributing
 
 ### Code guidelines
 
 This project follows the standards defined in:
 
-* [PSR-1](https://github.com/pmjones/fig-standards/blob/psr-1-style-guide/proposed/PSR-1-basic.md)
-* [PSR-2](https://github.com/pmjones/fig-standards/blob/psr-1-style-guide/proposed/PSR-2-advanced.md)
+- [PSR-1](https://github.com/pmjones/fig-standards/blob/psr-1-style-guide/proposed/PSR-1-basic.md)
+- [PSR-2](https://github.com/pmjones/fig-standards/blob/psr-1-style-guide/proposed/PSR-2-advanced.md)
 
 ---
+
 ## License
 
 SilverStripe Twig is released under the [MIT license](http://camspiers.mit-license.org/)
