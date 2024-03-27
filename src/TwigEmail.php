@@ -15,7 +15,7 @@ use SilverStripe\View\ThemeResourceLoader;
 use SilverStripe\View\ViewableData;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Part\AbstractPart;
-/* 
+/*
 injected class which is mostly copy/paste of Email unfortunately.
 */
 
@@ -315,7 +315,7 @@ class TwigEmail extends Email
             $this->text($plainRender);
         }
         if ($htmlRender && !$plainOnly) {
-            $this->html($htmlRender);
+            $this->html((string) $htmlRender);
         }
     }
 }
