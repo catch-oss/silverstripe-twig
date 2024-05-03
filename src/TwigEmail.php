@@ -193,7 +193,7 @@ class TwigEmail extends Email
         return ThemeResourceLoader::inst()->findTemplate(
             SSViewer::get_templates_by_class(static::class, '', self::class),
             SSViewer::get_themes()
-        );
+        ) ?? '';
     }
 
     /**
