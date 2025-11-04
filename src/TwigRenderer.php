@@ -138,7 +138,8 @@ trait TwigRenderer {
                 }
                 foreach ((array) $extensions as $extension) {
                     if ($loader->exists($value . $extension)) {
-                        return $this->dic['twig']->loadTemplate($value . $extension);
+                        // Twig 3: loadTemplate internal signature changed; use load() instead
+                        return $this->dic['twig']->load($value . $extension);
                     }
                 }
             }
