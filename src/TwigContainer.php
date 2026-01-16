@@ -5,10 +5,12 @@ namespace Azt3k\SS\Twig;
 use Pimple\Container;
 use Twig\Environment;
 use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
+use Symfony\Component\Cache\Adapter\NullAdapter;
 use Twig\Extra\Cache\CacheExtension;
 use Twig\Extra\Cache\CacheRuntime;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
 use Twig\Extension\DebugExtension;
+use SilverStripe\Control\Director;
 
 class TwigContainer extends Container
 {
@@ -76,7 +78,15 @@ class TwigContainer extends Container
 
             // Add cache extension and runtime loader for cache-extra
             $twig->addExtension(new CacheExtension());
-            $cacheAdapter = new PhpFilesAdapter('', 0, BASE_PATH . '/twig-partial-cache');
+
+            // Use NullAdapter in development to disable partial caching
+            // This ensures template changes are reflected immediately
+            if (Director::isDev()) {
+                $cacheAdapter = new NullAdapter();
+            } else {
+                $cacheAdapter = new PhpFilesAdapter('', 0, BASE_PATH . '/twig-partial-cache');
+            }
+
             $twig->addRuntimeLoader(new class($cacheAdapter) implements RuntimeLoaderInterface {
                 private $cacheAdapter;
                 public function __construct($cacheAdapter) { $this->cacheAdapter = $cacheAdapter; }
