@@ -4,7 +4,13 @@ namespace Azt3k\SS\Twig;
 
 use Pimple\Container;
 use Twig\Environment;
+use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
+use Symfony\Component\Cache\Adapter\NullAdapter;
+use Twig\Extra\Cache\CacheExtension;
+use Twig\Extra\Cache\CacheRuntime;
+use Twig\RuntimeLoader\RuntimeLoaderInterface;
 use Twig\Extension\DebugExtension;
+use SilverStripe\Core\Environment;
 
 class TwigContainer extends Container
 {
@@ -13,7 +19,8 @@ class TwigContainer extends Container
      * @var array
      */
     protected static $config = [
-        'twig.loader_class' => 'Twig_Loader_Filesystem',
+        // Updated for Twig 3: use namespaced FilesystemLoader
+        'twig.loader_class' => '\\Twig\\Loader\\FilesystemLoader',
         'twig.environment_options' => array(
             'auto_reload' => true
         ),
@@ -68,6 +75,27 @@ class TwigContainer extends Container
 
             if (isset($envOptions['debug']) && $envOptions['debug'])
                 $twig->addExtension(new DebugExtension());
+
+            // Add cache extension and runtime loader for cache-extra
+            $twig->addExtension(new CacheExtension());
+
+            // Use NullAdapter to disable partial caching when DISABLE_TWIG_FILE_CACHING env var is set
+            if (Environment::getEnv('DISABLE_TWIG_FILE_CACHING')) {
+                $cacheAdapter = new NullAdapter();
+            } else {
+                $cacheAdapter = new PhpFilesAdapter('', 0, BASE_PATH . '/twig-partial-cache');
+            }
+
+            $twig->addRuntimeLoader(new class($cacheAdapter) implements RuntimeLoaderInterface {
+                private $cacheAdapter;
+                public function __construct($cacheAdapter) { $this->cacheAdapter = $cacheAdapter; }
+                public function load($class) {
+                    if ($class === CacheRuntime::class) {
+                        return new CacheRuntime($this->cacheAdapter);
+                    }
+                    return null;
+                }
+            });
 
             return $twig;
 
