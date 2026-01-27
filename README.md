@@ -151,6 +151,10 @@ Twig has the concepts of `extends` and `blocks` which enable flexible template r
 
 SilverStripe Twig uses a dependency injection container (an extension of `Pimple`) to allow configuration and DI for all objects used.
 
+#### Environment Variables
+
+- `DISABLE_TWIG_FILE_CACHING` - Set this environment variable to disable Twig partial caching. When set, a `NullAdapter` is used instead of the file-based cache. Useful for development environments where you want template changes to be reflected immediately.
+
 **Options**
 
 - twig.environment_options
