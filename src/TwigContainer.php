@@ -10,7 +10,7 @@ use Twig\Extra\Cache\CacheExtension;
 use Twig\Extra\Cache\CacheRuntime;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
 use Twig\Extension\DebugExtension;
-use SilverStripe\Core\Environment;
+use SilverStripe\Core\Environment as SSEnvironment;
 
 class TwigContainer extends Container
 {
@@ -80,7 +80,7 @@ class TwigContainer extends Container
             $twig->addExtension(new CacheExtension());
 
             // Use NullAdapter to disable partial caching when DISABLE_TWIG_FILE_CACHING env var is set
-            if (Environment::getEnv('DISABLE_TWIG_FILE_CACHING')) {
+            if (SSEnvironment::getEnv('DISABLE_TWIG_FILE_CACHING')) {
                 $cacheAdapter = new NullAdapter();
             } else {
                 $cacheAdapter = new PhpFilesAdapter('', 0, BASE_PATH . '/twig-partial-cache');
