@@ -2,3 +2,9 @@ framework
 vendor
 composer.lock
 /.idea
+app/
+public/
+.htaccess
+index.php
+web.config
+.phpunit.cache
