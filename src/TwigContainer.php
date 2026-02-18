@@ -11,6 +11,7 @@ use Twig\Extra\Cache\CacheRuntime;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
 use Twig\Extension\DebugExtension;
 use SilverStripe\Core\Environment as SSEnvironment;
+use SilverStripe\View\SSViewer;
 
 class TwigContainer extends Container
 {
@@ -117,24 +118,20 @@ class TwigContainer extends Container
 
         // create some paths to check
         $actualPaths = [];
-        $possiblePaths = [
-            str_replace(
-                '//',
-                '',
-                (
-                    THEMES_PATH . '/' .
-                    \SilverStripe\Core\Config\Config::inst()->get(
-                        'SilverStripe\View\SSViewer',
-                        'theme'
-                    ) .
-                    '/' .
-                    'twig'
-                )
-            ),
-            BASE_PATH . '/app/twig',
-            BASE_PATH . '/app/templates',
-            BASE_PATH . '/node_modules'
-        ];
+        $possiblePaths = [];
+
+        // Add theme-based twig paths from configured themes
+        foreach (SSViewer::get_themes() as $theme) {
+            // Skip special themes like $default, $public
+            if (str_starts_with($theme, '$')) {
+                continue;
+            }
+            $possiblePaths[] = THEMES_PATH . '/' . $theme . '/twig';
+        }
+
+        $possiblePaths[] = BASE_PATH . '/app/twig';
+        $possiblePaths[] = BASE_PATH . '/app/templates';
+        $possiblePaths[] = BASE_PATH . '/node_modules';
 
         // code to generate paths for templates from modules
         // $modules = \SilverStripe\Core\Manifest\ModuleLoader::inst()
