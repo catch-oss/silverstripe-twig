@@ -1,8 +1,10 @@
 <?php
 
 namespace Azt3k\SS\Twig;
+
 use SilverStripe\View\Requirements;
 use SilverStripe\Model\ModelData;
+use Twig\TemplateWrapper;
 
 trait TwigRenderer {
 
@@ -11,12 +13,7 @@ trait TwigRenderer {
      */
     protected $includeRequirements = true;
 
-    /**
-     * [__get description]
-     * @param  [type] $name [description]
-     * @return [type]       [description]
-     */
-    public function __get($name) {
+    public function __get(string $name): mixed {
 
         if ($name == 'dic') {
             return $this->dic = new TwigContainer;
@@ -25,23 +22,15 @@ trait TwigRenderer {
         }
     }
 
-    /**
-     * [__isset description]
-     * @param  [type]  $name [description]
-     * @return boolean       [description]
-     */
-    public function __isset($name) {
+    public function __isset(string $name): bool {
 
         return $this->hasMethod($name) ? false : true;
     }
 
     /**
      * Overrides the renderWith method for DOs
-     * @param  [type] $templates    [description]
-     * @param  [type] $customFields [description]
-     * @return [type]               [description]
      */
-    public function renderWith($templates, $customFields = null) {
+    public function renderWith(string|array $templates, array|ModelData|null $customFields = null): string {
 
         $data = ($this->customisedObject) ? $this->customisedObject : $this;
 
@@ -61,12 +50,7 @@ trait TwigRenderer {
 
     }
 
-    /**
-     * [render description]
-     * @param  [type] $params [description]
-     * @return [type]         [description]
-     */
-    public function render($params = null) {
+    public function render(mixed $params = null): string {
 
         $obj = ($this->customisedObj) ? $this->customisedObj : $this;
         if ($params) {
@@ -83,7 +67,7 @@ trait TwigRenderer {
         );
     }
 
-    protected function renderTwig($templates, $context) {
+    protected function renderTwig(array $templates, mixed $context): string {
         $render = $this->getTwigTemplate($templates)->render([
             $this->dic['twig.controller_variable_name'] => $context
         ]);
@@ -95,7 +79,7 @@ trait TwigRenderer {
         return $render;
     }
 
-    public function customise($params) {
+    public function customise(mixed $params): static {
 
         if (is_array($params)) {
             foreach ($params as $key => $value) {
@@ -106,7 +90,7 @@ trait TwigRenderer {
         return $this;
     }
 
-    protected function getTwigTemplate($templates) {
+    protected function getTwigTemplate(array $templates): TemplateWrapper {
 
         $loader = $this->dic['twig.loader'];
         $extensions = $this->dic['twig.extensions'];
@@ -148,12 +132,9 @@ trait TwigRenderer {
     }
 
     /**
-     * [buildTemplatesFromClassName description]
-     * @param  [type] $className [description]
-     * @param  [type] $action    [description]
-     * @return [type]            [description]
+     * Build template list from class hierarchy
      */
-    public function buildTemplatesFromClassName($className, $action = null) {
+    public function buildTemplatesFromClassName(string $className, ?string $action = null): array {
 
         // init templates
         $templates = [];
@@ -187,12 +168,7 @@ trait TwigRenderer {
         return $templates;
     }
 
-    /**
-     * [getTemplateList description]
-     * @param  [type] $action [description]
-     * @return [type]         [description]
-     */
-    protected function getTemplateList($action = null) {
+    protected function getTemplateList(?string $action = null): array {
 
         // Hard-coded templates
         if (!empty($this->templates[$action])) {

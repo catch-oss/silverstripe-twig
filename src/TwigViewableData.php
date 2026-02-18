@@ -9,7 +9,7 @@ class TwigViewableData extends ModelData
 {
     use TwigRenderer;
 
-    public function AbsoluteLink($path)
+    public function AbsoluteLink(string $path): string
     {
         return trim(Director::absoluteBaseURL(), '/') . $path;
     }

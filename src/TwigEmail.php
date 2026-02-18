@@ -106,7 +106,7 @@ class TwigEmail extends Email
     /**
      * Passing a string of HTML for $body will have no affect if you also call either setData() or addData()
      */
-    public function setBody(AbstractPart|string $body = null): static
+    public function setBody(AbstractPart|string|null $body = null): static
     {
         if ($body instanceof AbstractPart) {
             // pass to Symfony\Component\Mime\Message::setBody()
@@ -145,7 +145,7 @@ class TwigEmail extends Email
      *
      * Calling setData() once means that any content set via text()/html()/setBody() will have no effect
      */
-    public function setData(array|ModelData $data)
+    public function setData(array|ModelData $data): static
     {
         if (is_array($data)) {
             $data = ArrayData::create($data);
@@ -178,7 +178,7 @@ class TwigEmail extends Email
     /**
      * Remove a single piece of template data
      */
-    public function removeData(string $name)
+    public function removeData(string $name): static
     {
         $this->data->{$name} = null;
         return $this;

@@ -181,7 +181,7 @@ class TwigContainer extends Container
      * @param string  $name      Name of service
      * @param Closure $extension Extending function
      */
-    public static function addExtension($name, $extension) {
+    public static function addExtension(string $name, callable $extension): void {
         self::$extensions[] = array($name, $extension);
     }
 
@@ -190,7 +190,7 @@ class TwigContainer extends Container
      * @param string  $name   Name of service
      * @param Closure $shared The shared service function
      */
-    public static function addShared($name, $shared) {
+    public static function addShared(string $name, callable $shared): void {
         self::$shared[] = array($name, $shared);
     }
 
@@ -198,10 +198,8 @@ class TwigContainer extends Container
      * Allows the addition to the default config by the user
      * @param array $config The extending config
      */
-    public static function extendConfig($config) {
-        if (is_array($config)) {
-            self::$config = array_merge_recursive(self::$config, $config);
-        }
+    public static function extendConfig(array $config): void {
+        self::$config = array_merge_recursive(self::$config, $config);
     }
 
     /**
@@ -217,7 +215,7 @@ class TwigContainer extends Container
      * sets the current config
      * @param array $config the config
      */
-    public static function setConfig(array $config)
+    public static function setConfig(array $config): void
     {
         self::$config = $config;
     }

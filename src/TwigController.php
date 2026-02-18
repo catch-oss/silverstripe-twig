@@ -2,11 +2,13 @@
 
 namespace Azt3k\SS\Twig;
 
+use SilverStripe\Control\HTTPRequest;
+
 trait TwigController {
 
     use TwigRenderer;
 
-    public function __get($name)
+    public function __get(string $name): mixed
     {
         if ($name == 'dic') {
             return $this->dic = new TwigContainer;
@@ -15,12 +17,12 @@ trait TwigController {
         }
     }
 
-    public function __isset($name)
+    public function __isset(string $name): bool
     {
         return $this->hasMethod($name) ? false : true;
     }
 
-    public function handleAction($request, $action)
+    public function handleAction(HTTPRequest $request, string $action): mixed
     {
         // urlParams, requestParams, and action are set for backward compatability
         foreach ($request->latestParams() as $k => $v) {
