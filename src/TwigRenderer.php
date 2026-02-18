@@ -94,43 +94,64 @@ trait TwigRenderer {
 
     protected function getTwigTemplate(array $templates): TemplateWrapper {
 
-        $loader = $this->dic['twig.loader'];
-        $extensions = $this->dic['twig.extensions'];
-        $ret = $this->extend('ModifyTwigTemplates', $templates);
-        if(is_array($ret) && count($ret) > 0) $templates = $ret[0];
+        $templates = $this->applyExtensionResult('ModifyTwigTemplates', $templates) ?? $templates;
 
-        if(!is_array($templates) || count($templates) == 0) {
-            throw new \InvalidArgumentException("No templates available, perhaps the extension if borked ");
+        if (!$templates) {
+            throw new \InvalidArgumentException("No templates available, perhaps the extension is borked");
         }
+
+        $loader = $this->dic['twig.loader'];
+        $extensions = (array) $this->dic['twig.extensions'];
 
         foreach ($templates as $value) {
-
-            // catches scenarios when a template is supplied as:
-            // Array
-            // (
-            //     [type] => Includes
-            //     [0] => SilverStripe\Security\Security_login
-            // )
-            if (is_array($value)) $value = $value[0];
-
-            $ret = $this->extend('ModifyTwigTemplate', $value);
-            if(is_array($ret) && count($ret) && is_string($ret[0])) {
-                $value = $ret[0];
-            }
-
-            if ($extensions) {
-                if (!is_array($extensions)) {
-                    $extensions = [$extensions];
-                }
-                foreach ((array) $extensions as $extension) {
-                    if ($loader->exists($value . $extension)) {
-                        // Twig 3: loadTemplate internal signature changed; use load() instead
-                        return $this->dic['twig']->load($value . $extension);
-                    }
-                }
+            $value = $this->resolveTemplateName($value);
+            $loaded = $this->findLoadableTemplate($loader, $extensions, $value);
+            if ($loaded !== null) {
+                return $loaded;
             }
         }
+
         throw new \InvalidArgumentException("No templates for " . print_r($templates, 1) . " exist");
+    }
+
+    /**
+     * Extracts the first valid string result from an extension hook call
+     */
+    private function applyExtensionResult(string $hook, mixed ...$args): mixed
+    {
+        $ret = $this->extend($hook, ...$args);
+        return (is_array($ret) && count($ret) > 0) ? $ret[0] : null;
+    }
+
+    /**
+     * Normalises a template entry — handles both string names and SS-style arrays
+     * like ['type' => 'Includes', 0 => 'SilverStripe\Security\Security_login']
+     */
+    private function resolveTemplateName(mixed $value): string
+    {
+        if (is_array($value)) {
+            $value = $value[0];
+        }
+
+        $override = $this->applyExtensionResult('ModifyTwigTemplate', $value);
+        if (is_string($override)) {
+            $value = $override;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Tries each registered file extension to find a loadable template
+     */
+    private function findLoadableTemplate($loader, array $extensions, string $name): ?TemplateWrapper
+    {
+        foreach ($extensions as $extension) {
+            if ($loader->exists($name . $extension)) {
+                return $this->dic['twig']->load($name . $extension);
+            }
+        }
+        return null;
     }
 
     /**
