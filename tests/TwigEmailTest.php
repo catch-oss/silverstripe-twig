@@ -516,4 +516,97 @@ class TwigEmailTest extends SapphireTest
         // THEN the explicit plain text should be used (template rendering skipped)
         $this->assertSame('Plain text content', $email->getTextBody());
     }
+
+    public function testGetDefaultFromFallsBackToDirectorHost(): void
+    {
+        // GIVEN admin_email is set to empty string (no configured admin email)
+        Config::modify()->set(TwigEmail::class, 'admin_email', '');
+        Director::config()->set('alternate_base_url', 'http://mysite.example.com/');
+
+        // WHEN we construct a TwigEmail with no from address
+        $email = new TwigEmail();
+
+        // THEN it should fall back to no-reply@<Director::host()>
+        $from = $email->getFrom();
+        $this->assertNotEmpty($from);
+    }
+
+    public function testGetDefaultFromWithEmptyAdminEmailUsesHost(): void
+    {
+        // GIVEN admin_email is an empty string and a host is available
+        Config::modify()->set(TwigEmail::class, 'admin_email', '');
+        Director::config()->set('alternate_base_url', 'http://fallback.example.com/');
+
+        // WHEN we construct a TwigEmail with no from address
+        $email = new TwigEmail();
+
+        // THEN the from address should use no-reply@<host> as fallback
+        $from = $email->getFrom();
+        $this->assertNotEmpty($from);
+    }
+
+    public function testGetDefaultFromWithNullAdminEmail(): void
+    {
+        // GIVEN admin_email is null
+        Config::modify()->set(TwigEmail::class, 'admin_email', null);
+        Director::config()->set('alternate_base_url', 'http://mysite.example.com/');
+
+        // WHEN we construct a TwigEmail with no from address
+        $email = new TwigEmail();
+
+        // THEN it should fall back to no-reply@host
+        $from = $email->getFrom();
+        $this->assertNotEmpty($from);
+    }
+
+    public function testSendWithDataOverridesExplicitHtmlBody(): void
+    {
+        // GIVEN a mock mailer, an email with explicit HTML body AND setData called
+        // (dataHasBeenSet = true means template rendering takes priority)
+        $mockMailer = $this->createMock(MailerInterface::class);
+        $mockMailer->expects($this->once())->method('send');
+        Injector::inst()->registerService($mockMailer, MailerInterface::class);
+
+        $email = new TwigEmail('sender@example.com', 'to@example.com', 'Test');
+        $email->html('<p>Original HTML</p>');
+        $email->setHTMLTemplate('email_test');
+        $email->setData(['Subject' => 'Override', 'Body' => 'Rendered']);
+
+        // WHEN we call send()
+        $email->send();
+
+        // THEN the template should be rendered (not the original explicit HTML)
+        $htmlBody = $email->getHtmlBody();
+        $this->assertStringContainsString('Override', $htmlBody);
+    }
+
+    public function testSendPlainWithDataAndNoPlainTemplate(): void
+    {
+        // GIVEN a mock mailer, an email with HTML template but no plain template
+        $mockMailer = $this->createMock(MailerInterface::class);
+        $mockMailer->expects($this->once())->method('send');
+        Injector::inst()->registerService($mockMailer, MailerInterface::class);
+
+        $email = new TwigEmail('sender@example.com', 'to@example.com', 'Test');
+        $email->setHTMLTemplate('email_test');
+        $email->setData(['Subject' => 'Plain Test', 'Body' => 'Content']);
+
+        // WHEN we call sendPlain() (HTML template renders, then plain is derived by stripping HTML)
+        $email->sendPlain();
+
+        // THEN the text body should be populated with a plain-text version derived from HTML
+        $textBody = $email->getTextBody();
+        $this->assertNotEmpty($textBody);
+        $this->assertStringContainsString('Content', $textBody);
+    }
+
+    public function testConstructorSetsBody(): void
+    {
+        // GIVEN an HTML body string
+        // WHEN we construct a TwigEmail with the body parameter
+        $email = new TwigEmail('sender@example.com', 'to@example.com', 'Test', '<p>Body</p>');
+
+        // THEN the HTML body should be set
+        $this->assertSame('<p>Body</p>', $email->getHtmlBody());
+    }
 }

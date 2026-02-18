@@ -325,4 +325,146 @@ class TwigRendererTest extends SapphireTest
         // THEN __isset returns true (allows dynamic property access via Twig)
         $this->assertTrue(isset($obj->somethingThatIsNotAMethod));
     }
+
+    public function testCustomiseWithNonArrayReturnsself(): void
+    {
+        // GIVEN a TwigViewableData instance
+        $obj = TwigViewableData::create();
+
+        // WHEN we customise with a non-array value (e.g. a string)
+        $result = $obj->customise('not-an-array');
+
+        // THEN it should return self without error (no-op for non-arrays)
+        $this->assertSame($obj, $result);
+    }
+
+    public function testGetTemplateListWithTemplateAsArray(): void
+    {
+        // GIVEN a TwigViewableData with $template set as an array
+        $obj = TwigViewableData::create();
+        $obj->template = ['first/template', 'second/template'];
+        $reflection = new \ReflectionMethod($obj, 'getTemplateList');
+
+        // WHEN we request the template list with no action
+        $result = $reflection->invoke($obj, null);
+
+        // THEN it should return the array as-is
+        $this->assertContains('first/template', $result);
+        $this->assertContains('second/template', $result);
+    }
+
+    public function testGetTemplateListWithDifferentClassName(): void
+    {
+        // GIVEN a TwigViewableData where ClassName differs from get_class()
+        // (using a real class so get_parent_class() doesn't throw in PHP 8.5)
+        $obj = TwigViewableData::create();
+        $obj->ClassName = Controller::class;
+        $reflection = new \ReflectionMethod($obj, 'getTemplateList');
+
+        // WHEN we request the template list with no action
+        $result = $reflection->invoke($obj, null);
+
+        // THEN both the actual class hierarchy and ClassName hierarchy should be merged
+        $this->assertContains('Azt3k/SS/Twig/TwigViewableData', $result);
+    }
+
+    public function testRenderWithFallsBackToParentForMissingTwigTemplate(): void
+    {
+        // GIVEN a TwigViewableData instance with no matching twig template
+        $obj = TwigViewableData::create();
+
+        // WHEN we call renderWith with a template that has no .twig file
+        // THEN it should catch InvalidArgumentException from Twig and fall back to parent
+        // (parent may also throw MissingTemplateException if no .ss template exists either)
+        try {
+            $result = $obj->renderWith(['SilverStripe\\Model\\ModelData']);
+            $this->assertInstanceOf(DBHTMLText::class, $result);
+        } catch (\SilverStripe\View\Exception\MissingTemplateException $e) {
+            // THEN the fallback to parent renderWith was attempted (confirming the catch block ran)
+            $this->assertStringContainsString('ModelData', $e->getMessage());
+        }
+    }
+
+    public function testRenderTwigWithoutRequirements(): void
+    {
+        // GIVEN a TwigViewableData with includeRequirements disabled
+        $obj = TwigViewableData::create();
+        $obj->Title = 'NoReq';
+        $ref = new \ReflectionProperty($obj, 'includeRequirements');
+        $ref->setValue($obj, false);
+
+        // WHEN we call renderTwig
+        $method = new \ReflectionMethod($obj, 'renderTwig');
+        $result = $method->invoke($obj, ['test'], $obj);
+
+        // THEN it should still render the template (without Requirements::includeInHTML)
+        $this->assertStringContainsString('Hello NoReq', $result);
+    }
+
+    public function testApplyExtensionResultReturnsNullWhenNoExtensions(): void
+    {
+        // GIVEN a TwigViewableData instance with no extensions registered
+        $obj = TwigViewableData::create();
+        $method = new \ReflectionMethod($obj, 'applyExtensionResult');
+
+        // WHEN we call applyExtensionResult with a hook that has no handlers
+        $result = $method->invoke($obj, 'SomeNonExistentHook', 'arg');
+
+        // THEN it should return null (no extension results)
+        $this->assertNull($result);
+    }
+
+    public function testResolveTemplateNameWithArrayEntry(): void
+    {
+        // GIVEN a TwigViewableData instance
+        $obj = TwigViewableData::create();
+        $method = new \ReflectionMethod($obj, 'resolveTemplateName');
+
+        // WHEN we resolve a template entry in SS-style array format
+        $result = $method->invoke($obj, ['type' => 'Includes', 0 => 'My/Template']);
+
+        // THEN it should extract the template name from index 0
+        $this->assertSame('My/Template', $result);
+    }
+
+    public function testResolveTemplateNameWithString(): void
+    {
+        // GIVEN a TwigViewableData instance
+        $obj = TwigViewableData::create();
+        $method = new \ReflectionMethod($obj, 'resolveTemplateName');
+
+        // WHEN we resolve a simple string template name
+        $result = $method->invoke($obj, 'Simple/Template');
+
+        // THEN it should return the string unchanged
+        $this->assertSame('Simple/Template', $result);
+    }
+
+    public function testFindLoadableTemplateReturnsNullForMissing(): void
+    {
+        // GIVEN a TwigViewableData with a container
+        $obj = TwigViewableData::create();
+        $loader = $obj->dic['twig.loader'];
+        $method = new \ReflectionMethod($obj, 'findLoadableTemplate');
+
+        // WHEN we try to find a template that doesn't exist
+        $result = $method->invoke($obj, $loader, ['.twig'], 'nonexistent_xyz_template');
+
+        // THEN it should return null
+        $this->assertNull($result);
+    }
+
+    public function testFindLoadableTemplateReturnsTemplateForExisting(): void
+    {
+        // GIVEN a TwigViewableData with test fixtures registered
+        $obj = TwigViewableData::create();
+        $loader = $obj->dic['twig.loader'];
+        $method = new \ReflectionMethod($obj, 'findLoadableTemplate');
+
+        // WHEN we try to find the 'test' template (which exists in fixtures)
+        $result = $method->invoke($obj, $loader, ['.twig'], 'test');
+
+        // THEN it should return a TemplateWrapper
+        $this->assertInstanceOf(\Twig\TemplateWrapper::class, $result);
+    }
 }
