@@ -11,52 +11,74 @@ class TwigSSGlobalsTest extends SapphireTest
 
     public function testCanBeInstantiated(): void
     {
+        // GIVEN the SS framework is bootstrapped with TemplateGlobalProviders
+        // WHEN we create a TwigSSGlobals instance
         $globals = new TwigSSGlobals();
+
+        // THEN it should be a valid instance (constructor scans all global providers)
         $this->assertInstanceOf(TwigSSGlobals::class, $globals);
     }
 
     public function testIssetReturnsTrueForKnownGlobals(): void
     {
+        // GIVEN a TwigSSGlobals instance with SS global providers loaded
         $globals = new TwigSSGlobals();
-        // SiteConfig is a TemplateGlobalProvider that exposes 'CurrentSite'
-        // Director exposes 'BaseURL', 'AbsoluteBaseURL', etc.
+
+        // WHEN we check isset for a known global like BaseURL (from Director)
+        // THEN at least one variant (BaseURL or baseURL) should exist
         $this->assertTrue(isset($globals->BaseURL) || isset($globals->baseURL));
     }
 
     public function testIssetReturnsFalseForUnknownGlobal(): void
     {
+        // GIVEN a TwigSSGlobals instance
         $globals = new TwigSSGlobals();
+
+        // WHEN we check isset for a non-existent global
+        // THEN it should return false
         $this->assertFalse(isset($globals->ThisGlobalDoesNotExist));
     }
 
     public function testGetReturnsNullForUnknownGlobal(): void
     {
+        // GIVEN a TwigSSGlobals instance
         $globals = new TwigSSGlobals();
+
+        // WHEN we access a non-existent global
+        // THEN it should return null (not throw)
         $this->assertNull($globals->ThisGlobalDoesNotExist);
     }
 
     public function testGetReturnsValueForKnownGlobal(): void
     {
+        // GIVEN a TwigSSGlobals instance
         $globals = new TwigSSGlobals();
-        // Director is a TemplateGlobalProvider that exposes BaseURL
+
+        // WHEN we access a known global like BaseURL
         if (isset($globals->BaseURL)) {
             $result = $globals->BaseURL;
+            // THEN it should return a non-null value
             $this->assertNotNull($result);
         } elseif (isset($globals->baseURL)) {
             $result = $globals->baseURL;
             $this->assertNotNull($result);
         } else {
-            // If no globals are available in test context, just verify no exception
+            // THEN if no globals are available in test context, just verify no exception
             $this->assertTrue(true);
         }
     }
 
     public function testGlobalResultIsCached(): void
     {
+        // GIVEN a TwigSSGlobals instance with a known global
         $globals = new TwigSSGlobals();
+
         if (isset($globals->BaseURL)) {
+            // WHEN we access the same global twice
             $first = $globals->BaseURL;
             $second = $globals->BaseURL;
+
+            // THEN the result should be identical (cached, not re-evaluated)
             $this->assertSame($first, $second);
         } else {
             $this->assertTrue(true);
@@ -65,12 +87,15 @@ class TwigSSGlobalsTest extends SapphireTest
 
     public function testGlobalsAreCaseSensitiveWithBothVariants(): void
     {
+        // GIVEN a TwigSSGlobals instance (constructor registers both ucfirst and lcfirst variants)
         $globals = new TwigSSGlobals();
-        // The constructor stores both ucfirst and lcfirst versions
-        // So if 'BaseURL' exists, 'baseURL' should also exist (and vice versa)
+
+        // WHEN we check for both case variants of a global
         if (isset($globals->BaseURL)) {
+            // THEN the lowercase variant should also exist
             $this->assertTrue(isset($globals->baseURL));
         } elseif (isset($globals->baseURL)) {
+            // THEN the uppercase variant should also exist
             $this->assertTrue(isset($globals->BaseURL));
         } else {
             $this->assertTrue(true);
