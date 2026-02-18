@@ -4,7 +4,9 @@ namespace Azt3k\SS\Twig\Tests;
 
 use Azt3k\SS\Twig\TwigContainer;
 use Azt3k\SS\Twig\TwigSSGlobals;
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Dev\SapphireTest;
+use SilverStripe\View\SSViewer;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
@@ -182,6 +184,104 @@ class TwigContainerTest extends SapphireTest
         $container = new TwigContainer();
         $cache = $container['twig.compilation_cache'];
         $this->assertStringContainsString('twig-cache', $cache);
+    }
+
+    public function testTemplatePathsIncludesExistingAppTwig(): void
+    {
+        $appTwig = BASE_PATH . '/app/twig';
+        @mkdir($appTwig, 0755, true);
+        try {
+            $container = new TwigContainer();
+            $paths = $container['twig.template_paths'];
+            $this->assertContains($appTwig, $paths);
+        } finally {
+            @rmdir($appTwig);
+        }
+    }
+
+    public function testTemplatePathsIncludesExistingAppTemplates(): void
+    {
+        $appTemplates = BASE_PATH . '/app/templates';
+        $created = !is_dir($appTemplates);
+        if ($created) {
+            @mkdir($appTemplates, 0755, true);
+        }
+        try {
+            $container = new TwigContainer();
+            $paths = $container['twig.template_paths'];
+            $this->assertContains($appTemplates, $paths);
+        } finally {
+            if ($created) {
+                @rmdir($appTemplates);
+            }
+        }
+    }
+
+    public function testTemplatePathsExcludesNonExistentDirectories(): void
+    {
+        $container = new TwigContainer();
+        $paths = $container['twig.template_paths'];
+        $this->assertIsArray($paths);
+        foreach ($paths as $path) {
+            $this->assertDirectoryExists($path);
+        }
+    }
+
+    public function testTemplatePathsIncludesThemeTwigDir(): void
+    {
+        // Get current themes and create a twig dir for the first non-special theme
+        $themes = SSViewer::get_themes();
+        $testTheme = null;
+        foreach ($themes as $theme) {
+            if (!str_starts_with($theme, '$')) {
+                $testTheme = $theme;
+                break;
+            }
+        }
+
+        if (!$testTheme) {
+            // No non-special themes configured — set one
+            $testTheme = 'testtheme';
+            Config::modify()->set(SSViewer::class, 'themes', [$testTheme, '$default']);
+        }
+
+        $themeTwigDir = THEMES_PATH . '/' . $testTheme . '/twig';
+        $createdDirs = [];
+
+        // Create the theme twig directory tree
+        $dir = $themeTwigDir;
+        while (!is_dir($dir)) {
+            array_unshift($createdDirs, $dir);
+            $dir = dirname($dir);
+        }
+        foreach ($createdDirs as $d) {
+            mkdir($d, 0755);
+        }
+
+        try {
+            $container = new TwigContainer();
+            $paths = $container['twig.template_paths'];
+            $this->assertContains($themeTwigDir, $paths);
+        } finally {
+            // Clean up created directories in reverse
+            foreach (array_reverse($createdDirs) as $d) {
+                @rmdir($d);
+            }
+        }
+    }
+
+    public function testTemplatePathsSkipsSpecialThemes(): void
+    {
+        Config::modify()->set(SSViewer::class, 'themes', ['$default', '$public']);
+        $container = new TwigContainer();
+        $paths = $container['twig.template_paths'];
+        $this->assertIsArray($paths);
+
+        // None of the paths should contain $default or $public theme dirs
+        foreach ($paths as $path) {
+            $this->assertStringNotContainsString('/$default/', $path);
+            $this->assertStringNotContainsString('/$public/', $path);
+        }
     }
 
     public function testContainerWithNamespacedPaths(): void
