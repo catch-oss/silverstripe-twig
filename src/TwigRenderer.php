@@ -120,7 +120,7 @@ trait TwigRenderer {
     private function applyExtensionResult(string $hook, mixed ...$args): mixed
     {
         $ret = $this->extend($hook, ...$args);
-        return (is_array($ret) && count($ret) > 0) ? $ret[0] : null;
+        return !empty($ret) ? $ret[0] : null;
     }
 
     /**
