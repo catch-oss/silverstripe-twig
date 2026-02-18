@@ -37,9 +37,9 @@
 
 | Pattern | Migration | Files Affected |
 |---|---|---|
-| `SSViewer::get_templates_by_class()` | Replace with SS6 template resolution API (SSTemplateEngine or ThemeResourceLoader) | TwigEmail.php |
-| `SSViewer::get_themes()` | Replace with SS6 theme API | TwigEmail.php |
-| `Config::inst()->get('SilverStripe\View\SSViewer', 'theme')` | Update config key to SS6 equivalent (SSTemplateEngine) | TwigContainer.php |
+| `ThemeResourceLoader::findTemplate()` | **Removed in SS6.** SS5 `getHTMLTemplate()` used `ThemeResourceLoader::findTemplate()` to resolve the candidate array from `SSViewer::get_templates_by_class()` down to a single string. SS6 removed `findTemplate()` — `getHTMLTemplate()` now returns `string\|array` (string when explicitly set, array of candidates when using class-based lookup). The template engine resolves which candidate to use later. | TwigEmail.php |
+| `SSViewer::get_themes()` | Still exists in SS6 — no change needed | TwigEmail.php |
+| `Config::inst()->get('SilverStripe\View\SSViewer', 'theme')` | Singular `theme` config removed in SS6. Replaced with `SSViewer::get_themes()` which returns array of theme names | TwigContainer.php |
 | `ViewableData::config()->uninherited('default_cast')` | Change to `ModelData::config()->uninherited('default_cast')` | TwigSSGlobals.php |
 | `extends ViewableData` | `extends ModelData` | TwigViewableData.php |
 | `instanceof ViewableData` | `instanceof ModelData` | TwigRenderer.php |
