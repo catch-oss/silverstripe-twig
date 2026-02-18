@@ -7,12 +7,12 @@ use RuntimeException;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\FieldType\DBField;
-use SilverStripe\View\ArrayData;
+use SilverStripe\Model\DBField;
+use SilverStripe\Model\ArrayData;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
 use SilverStripe\View\ThemeResourceLoader;
-use SilverStripe\View\ViewableData;
+use SilverStripe\Model\ModelData;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Part\AbstractPart;
 /*
@@ -34,7 +34,7 @@ class TwigEmail extends Email
 
     /**
      * Additional data available in a template.
-     * Used in the same way than {@link ViewableData->customize()}.
+     * Used in the same way than {@link ModelData->customize()}.
      */
     private TwigViewableData $data;
 
@@ -124,7 +124,7 @@ class TwigEmail extends Email
      * IsEmail: used to detect if rendering an email template rather than a page template
      * BaseUrl: used to get the base URL for the email
      */
-    public function getData(): ViewableData
+    public function getData(): ModelData
     {
         $extraData = [
             'IsEmail' => true,
@@ -145,7 +145,7 @@ class TwigEmail extends Email
      *
      * Calling setData() once means that any content set via text()/html()/setBody() will have no effect
      */
-    public function setData(array|ViewableData $data)
+    public function setData(array|ModelData $data)
     {
         if (is_array($data)) {
             $data = ArrayData::create($data);

@@ -1,8 +1,8 @@
 <?php
 
 namespace Azt3k\SS\Twig;
-use \SilverStripe\View\Requirements;
-use \SilverStripe\View\ViewableData;
+use SilverStripe\View\Requirements;
+use SilverStripe\Model\ModelData;
 
 trait TwigRenderer {
 
@@ -45,7 +45,7 @@ trait TwigRenderer {
 
         $data = ($this->customisedObject) ? $this->customisedObject : $this;
 
-        if (is_array($customFields) || $customFields instanceof ViewableData) {
+        if (is_array($customFields) || $customFields instanceof ModelData) {
             $data = $data->customise($customFields);
         }
 

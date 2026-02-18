@@ -3,7 +3,7 @@
 namespace Azt3k\SS\Twig;
 
 use SilverStripe\Core\ClassInfo;
-use SilverStripe\View\ViewableData;
+use SilverStripe\Model\ModelData;
 use SilverStripe\View\TemplateGlobalProvider;
 
 class TwigSSGlobals
@@ -30,7 +30,7 @@ class TwigSSGlobals
                     if (!is_array($details)) {
                         $details = [
                             'method' => $details,
-                            'casting' => ViewableData::config()->uninherited('default_cast')
+                            'casting' => ModelData::config()->uninherited('default_cast')
                         ];
                     }
 
