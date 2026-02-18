@@ -7,11 +7,10 @@ use RuntimeException;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Model\DBField;
+use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\Model\ArrayData;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
-use SilverStripe\View\ThemeResourceLoader;
 use SilverStripe\Model\ModelData;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Part\AbstractPart;
@@ -184,16 +183,13 @@ class TwigEmail extends Email
         return $this;
     }
 
-    public function getHTMLTemplate(): string
+    public function getHTMLTemplate(): string|array
     {
         if ($this->HTMLTemplate) {
             return $this->HTMLTemplate;
         }
 
-        return ThemeResourceLoader::inst()->findTemplate(
-            SSViewer::get_templates_by_class(static::class, '', self::class),
-            SSViewer::get_themes()
-        ) ?? '';
+        return SSViewer::get_templates_by_class(static::class, '', Email::class);
     }
 
     /**

@@ -114,7 +114,7 @@ class TwigContainer extends Container
         };
 
         // Dynamic props
-        $this['twig.compilation_cache'] = TEMP_FOLDER . '/twig-cache';
+        $this['twig.compilation_cache'] = TEMP_PATH . '/twig-cache';
 
         // create some paths to check
         $actualPaths = [];

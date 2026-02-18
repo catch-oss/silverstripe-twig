@@ -4,6 +4,7 @@ namespace Azt3k\SS\Twig;
 
 use SilverStripe\View\Requirements;
 use SilverStripe\Model\ModelData;
+use SilverStripe\ORM\FieldType\DBHTMLText;
 use Twig\TemplateWrapper;
 
 trait TwigRenderer {
@@ -30,7 +31,7 @@ trait TwigRenderer {
     /**
      * Overrides the renderWith method for DOs
      */
-    public function renderWith(string|array $templates, array|ModelData|null $customFields = null): string {
+    public function renderWith($template, ModelData|array $customFields = []): DBHTMLText {
 
         $data = ($this->customisedObject) ? $this->customisedObject : $this;
 
@@ -38,14 +39,15 @@ trait TwigRenderer {
             $data = $data->customise($customFields);
         }
 
-        if (!is_array($templates)) {
-            $templates = [$templates];
-        }
+        $templates = is_array($template) ? $template : [$template];
 
         try {
-            return $this->renderTwig($templates, $data);
+            $html = $this->renderTwig($templates, $data);
+            $field = DBHTMLText::create();
+            $field->setValue($html);
+            return $field;
         } catch (\InvalidArgumentException $e) {
-            return parent::renderWith($templates, $customFields);
+            return parent::renderWith($template, $customFields);
         }
 
     }
@@ -176,14 +178,17 @@ trait TwigRenderer {
         } elseif (!empty($this->templates['index'])) {
             $templates = $this->templates['index'];
         } elseif (!empty($this->template)) {
-            $templates = $this->template;
+            $templates = is_array($this->template) ? $this->template : [$this->template];
         } else {
             // build template list
             // get_class and $this->className return different things sometimes
-            $templates = array_unique(array_merge(
-                $this->buildTemplatesFromClassName(get_class($this), $action),
-                $this->buildTemplatesFromClassName($this->ClassName, $action)
-            ));
+            $templates = $this->buildTemplatesFromClassName(get_class($this), $action);
+            if (!empty($this->ClassName) && $this->ClassName !== get_class($this)) {
+                $templates = array_unique(array_merge(
+                    $templates,
+                    $this->buildTemplatesFromClassName($this->ClassName, $action)
+                ));
+            }
         }
 
         // if the current class has a getHTMLTemplate method try it
