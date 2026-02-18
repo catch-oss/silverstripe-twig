@@ -76,7 +76,7 @@
 | Area | Risk | Notes |
 |---|---|---|
 | Namespace renames | Medium | ViewableData→ModelData affects 4 files; straightforward but pervasive |
-| SSViewer API changes | High | SSViewer removed in SS6, replaced by SSTemplateEngine. TwigEmail template resolution and TwigContainer theme config both rely on SSViewer APIs that need SS6 equivalents |
+| SSViewer API changes | Medium | SSViewer may be removed or shimmed in SS6 (replaced by SSTemplateEngine). TwigEmail template resolution and TwigContainer theme config both rely on SSViewer APIs — actual SS6 API will be checked after composer update, and tests will validate the migration end-to-end |
 | PHP 8.5 compat | Low | One implicit nullable, some missing type declarations |
 | Test creation | High | No existing tests — must write from scratch to reach 80% coverage across 8 files |
 | Email class compat | Medium | TwigEmail extends Email — need to verify SS6 Email API compatibility |
@@ -105,12 +105,14 @@
 - [ ] Remove dead `use IOD\Util\Debug` import from TwigViewableData.php
 
 ### Phase 3: API Changes (2 files, highest risk)
-- [ ] Replace `SSViewer::get_templates_by_class()` with SS6 template resolution in TwigEmail.php
-- [ ] Replace `SSViewer::get_themes()` with SS6 theme API in TwigEmail.php
-- [ ] Update `Config::inst()->get('SilverStripe\View\SSViewer', 'theme')` to SS6 equivalent in TwigContainer.php
+- [ ] Check whether `SSViewer` still exists in SS6 as a compat shim or is fully removed — inspect the installed framework source after `composer update`
+- [ ] If removed: replace `SSViewer::get_templates_by_class()` with SS6 template resolution (SSTemplateEngine or ThemeResourceLoader) in TwigEmail.php
+- [ ] If removed: replace `SSViewer::get_themes()` with SS6 theme API in TwigEmail.php
+- [ ] If removed: update `Config::inst()->get('SilverStripe\View\SSViewer', 'theme')` to SS6 equivalent in TwigContainer.php
+- [ ] If retained: update import/usage if class moved but API is unchanged
 - [ ] Update `ViewableData::config()` → `ModelData::config()` in TwigSSGlobals.php
 - [ ] Verify Email parent class API compatibility (setBody, send, sendPlain)
-- [ ] Remove `use SilverStripe\View\SSViewer` import from TwigEmail.php
+- [ ] Remove `use SilverStripe\View\SSViewer` import from TwigEmail.php if class is gone
 
 ### Phase 4: PHP 8.5 Compatibility (all files)
 - [ ] Fix implicit nullable: `AbstractPart|string $body = null` → `AbstractPart|string|null $body = null` in TwigEmail.php:109
@@ -136,13 +138,14 @@
 - [ ] Add `autoload-dev.classmap` for `app/src/Page.php` and `app/src/PageController.php`
 - [ ] Add recipe-generated files to `.gitignore`
 - [ ] Create test classes extending `SapphireTest`:
-  - `tests/TwigContainerTest.php` — test container setup, config, template paths
-  - `tests/TwigRendererTest.php` — test renderWith, render, getTwigTemplate, buildTemplatesFromClassName
-  - `tests/TwigEmailTest.php` — test setData, addData, getData, removeData, template rendering
-  - `tests/TwigSSGlobalsTest.php` — test global variable loading, __isset, __get
+  - `tests/TwigContainerTest.php` — test container setup, config, template paths, theme config resolution (exercises the SSViewer/SSTemplateEngine config path)
+  - `tests/TwigRendererTest.php` — test renderWith, render, getTwigTemplate, buildTemplatesFromClassName; verify Twig template loading against the SS6 framework
+  - `tests/TwigEmailTest.php` — test setData, addData, getData, removeData, template rendering; **thoroughly test getHTMLTemplate() which depends on SSViewer/SSTemplateEngine API for template-by-class resolution and theme lookup** — these tests running against SS6 will catch any broken API surface
+  - `tests/TwigSSGlobalsTest.php` — test global variable loading, __isset, __get; verify ModelData::config() access works
   - `tests/TwigViewableDataTest.php` — test AbsoluteLink, TwigRenderer trait integration
   - `tests/TwigControllerExtensionTest.php` — basic extension wiring test
   - `tests/TwigRendererExtensionTest.php` — basic extension wiring test
+- [ ] Ensure tests exercise all SS6 API touch points end-to-end (template resolution, theme config, ModelData, DBField, ArrayData) — since the test suite runs against SS6 framework, any broken API migration will surface as test failures
 - [ ] Use `$usesDatabase = false` for tests that don't need ORM
 - [ ] Use `Injector::inst()->registerService()` for mock injection
 - [ ] Use `::create()` instead of `new` for SS classes in tests
