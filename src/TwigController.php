@@ -42,17 +42,17 @@ trait TwigController {
             return $this->httpError(403, "Action '$this->action' isn't allowed on class " . get_class($this));
         }
 
-        if ($this->hasMethod($this->action)) {
-            $result = $this->{$this->action}($request);
-
-            // If the action returns an array, customise with it before rendering the template.
-            if (is_array($result)) {
-                return $this->renderTwig($this->getTemplateList($this->action), $this->customise($result));
-            } else {
-                return $result;
-            }
-        } else {
+        // If no explicit action method exists, render the template directly
+        if (!$this->hasMethod($this->action)) {
             return $this->renderTwig($this->getTemplateList($this->action), $this);
         }
+
+        $result = $this->{$this->action}($request);
+
+        // If the action returns an array, customise with it before rendering the template;
+        // otherwise return the action result as-is (e.g. HTTPResponse, string)
+        return is_array($result)
+            ? $this->renderTwig($this->getTemplateList($this->action), $this->customise($result))
+            : $result;
     }
 }
