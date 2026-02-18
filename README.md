@@ -1,4 +1,20 @@
-# Twig templates for SilverStripe 5
+# Twig templates for SilverStripe
+
+<!-- PROJECT SHIELDS -->
+[![SonarCloud](https://github.com/catch-oss/silverstripe-twig/actions/workflows/sonar.yml/badge.svg)](https://github.com/catch-oss/silverstripe-twig/actions/workflows/sonar.yml)
+[![Test](https://github.com/catch-oss/silverstripe-twig/actions/workflows/test.yml/badge.svg)](https://github.com/catch-oss/silverstripe-twig/actions/workflows/test.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=catch-design_catch-oss-silverstripe-twig)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=coverage)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=bugs)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=code_smells)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
+
+## Compatibility
+
+| Version | Silverstripe | PHP |
+|---------|-------------|-----|
+| release/6 | ^6.0 | ^8.5 |
+| release/5 | ^5.0 | ^8.1 |
+| master | ^5.0 | ^8.1 |
 
 <!-- PROJECT SHIELDS -->
 [![SonarCloud](https://github.com/catch-oss/silverstripe-twig/actions/workflows/sonar.yml/badge.svg)](https://github.com/catch-oss/silverstripe-twig/actions/workflows/sonar.yml)
@@ -17,7 +33,7 @@
 
 ## Overview
 
-SilverStripe Twig enables the use of the Twig templating engine in SilverStripe 5
+SilverStripe Twig enables the use of the Twig templating engine in SilverStripe
 
 If you are not familiar with Twig, check out the [docs](http://twig.sensiolabs.org/).
 
@@ -114,7 +130,7 @@ Silverstripe global functions/variables will be available on the variable `g`.
 
 ### Rendering HTML Generating Controller Methods
 
-- SS4 changes the `__toString` behaviour for `ViewableData` objects to use `static::class` rather than `$this->forTemplate()`
+- SS changes the `__toString` behaviour for `ModelData` objects to use `static::class` rather than `$this->forTemplate()`
 - We need to dump the raw HTML value or we get escaped output
 
 ```jinja
