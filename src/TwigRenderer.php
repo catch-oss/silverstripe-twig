@@ -52,7 +52,7 @@ trait TwigRenderer {
 
     }
 
-    public function render(mixed $params = null): string {
+    public function render(mixed $params = null): DBHTMLText {
 
         $obj = ($this->customisedObj) ? $this->customisedObj : $this;
         if ($params) {
@@ -63,10 +63,14 @@ trait TwigRenderer {
             ? $this->getAction()
             : null;
 
-        return $this->renderTwig(
+        $html = $this->renderTwig(
             $this->getTemplateList($action),
             $obj
         );
+
+        $field = DBHTMLText::create();
+        $field->setValue($html);
+        return $field;
     }
 
     protected function renderTwig(array $templates, mixed $context): string {
