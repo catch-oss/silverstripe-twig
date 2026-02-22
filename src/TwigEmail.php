@@ -8,11 +8,10 @@ use SilverStripe\Control\Director;
 use SilverStripe\Control\Email\Email;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\FieldType\DBField;
-use SilverStripe\View\ArrayData;
+use SilverStripe\Model\ArrayData;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
-use SilverStripe\View\ThemeResourceLoader;
-use SilverStripe\View\ViewableData;
+use SilverStripe\Model\ModelData;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Part\AbstractPart;
 /*
@@ -34,7 +33,7 @@ class TwigEmail extends Email
 
     /**
      * Additional data available in a template.
-     * Used in the same way than {@link ViewableData->customize()}.
+     * Used in the same way than {@link ModelData->customize()}.
      */
     private TwigViewableData $data;
 
@@ -106,7 +105,7 @@ class TwigEmail extends Email
     /**
      * Passing a string of HTML for $body will have no affect if you also call either setData() or addData()
      */
-    public function setBody(AbstractPart|string $body = null): static
+    public function setBody(AbstractPart|string|null $body = null): static
     {
         if ($body instanceof AbstractPart) {
             // pass to Symfony\Component\Mime\Message::setBody()
@@ -124,7 +123,7 @@ class TwigEmail extends Email
      * IsEmail: used to detect if rendering an email template rather than a page template
      * BaseUrl: used to get the base URL for the email
      */
-    public function getData(): ViewableData
+    public function getData(): ModelData
     {
         $extraData = [
             'IsEmail' => true,
@@ -145,7 +144,7 @@ class TwigEmail extends Email
      *
      * Calling setData() once means that any content set via text()/html()/setBody() will have no effect
      */
-    public function setData(array|ViewableData $data)
+    public function setData(array|ModelData $data): static
     {
         if (is_array($data)) {
             $data = ArrayData::create($data);
@@ -178,22 +177,19 @@ class TwigEmail extends Email
     /**
      * Remove a single piece of template data
      */
-    public function removeData(string $name)
+    public function removeData(string $name): static
     {
         $this->data->{$name} = null;
         return $this;
     }
 
-    public function getHTMLTemplate(): string
+    public function getHTMLTemplate(): string|array
     {
         if ($this->HTMLTemplate) {
             return $this->HTMLTemplate;
         }
 
-        return ThemeResourceLoader::inst()->findTemplate(
-            SSViewer::get_templates_by_class(static::class, '', self::class),
-            SSViewer::get_themes()
-        ) ?? '';
+        return SSViewer::get_templates_by_class(static::class, '', Email::class);
     }
 
     /**

@@ -10,7 +10,9 @@ use Twig\Extra\Cache\CacheExtension;
 use Twig\Extra\Cache\CacheRuntime;
 use Twig\RuntimeLoader\RuntimeLoaderInterface;
 use Twig\Extension\DebugExtension;
+use Twig\Loader\FilesystemLoader;
 use SilverStripe\Core\Environment as SSEnvironment;
+use SilverStripe\View\SSViewer;
 
 class TwigContainer extends Container
 {
@@ -51,131 +53,123 @@ class TwigContainer extends Container
 
         parent::__construct();
 
-        //Shared services
-        $this['twig'] = function ($c) {
+        $this['twig'] = fn($c) => $this->createTwigEnvironment($c);
+        $this['twig.loader'] = fn($c) => $this->createTwigLoader($c);
+        $this['twig.compilation_cache'] = TEMP_PATH . '/twig-cache';
+        $this['twig.template_paths'] = $this->resolveTemplatePaths();
 
-            $envOptions = array_merge(
-                ['cache' => $c['twig.compilation_cache']],
-                $c['twig.environment_options']
-            );
+        $this->applyUserConfig();
+    }
 
-            $twig = new Environment(
-                $c['twig.loader'],
-                $envOptions
-            );
+    /**
+     * Creates and configures the Twig Environment with globals, debug, and cache extensions
+     */
+    private function createTwigEnvironment(Container $c): Environment
+    {
+        $envOptions = array_merge(
+            ['cache' => $c['twig.compilation_cache']],
+            $c['twig.environment_options']
+        );
 
-            if (isset($c['twig.globals'])) {
-                foreach ($c['twig.globals'] as $global => $path) {
-                    $twig->addGlobal($global, $path);
-                }
+        $twig = new Environment($c['twig.loader'], $envOptions);
+
+        if (isset($c['twig.globals'])) {
+            foreach ($c['twig.globals'] as $global => $path) {
+                $twig->addGlobal($global, $path);
             }
+        }
 
-            // add the Silverstripe globals to the g. namespace
-            $twig->addGlobal('g', new TwigSSGlobals());
+        $twig->addGlobal('g', new TwigSSGlobals());
 
-            if (isset($envOptions['debug']) && $envOptions['debug'])
-                $twig->addExtension(new DebugExtension());
+        if (!empty($envOptions['debug'])) {
+            $twig->addExtension(new DebugExtension());
+        }
 
-            // Add cache extension and runtime loader for cache-extra
-            $twig->addExtension(new CacheExtension());
+        $twig->addExtension(new CacheExtension());
+        $twig->addRuntimeLoader($this->createCacheRuntimeLoader());
 
-            // Use NullAdapter to disable partial caching when DISABLE_TWIG_FILE_CACHING env var is set
-            if (SSEnvironment::getEnv('DISABLE_TWIG_FILE_CACHING')) {
-                $cacheAdapter = new NullAdapter();
-            } else {
-                $cacheAdapter = new PhpFilesAdapter('', 0, BASE_PATH . '/twig-partial-cache');
+        return $twig;
+    }
+
+    /**
+     * Creates the Twig filesystem loader with optional namespaced paths
+     */
+    private function createTwigLoader(Container $c): FilesystemLoader
+    {
+        $twigLoader = new $c['twig.loader_class']($c['twig.template_paths']);
+
+        if (isset($c['twig.template_namespaced_paths'])) {
+            foreach ($c['twig.template_namespaced_paths'] as $path => $namespace) {
+                $twigLoader->addPath($path, $namespace);
             }
+        }
 
-            $twig->addRuntimeLoader(new class($cacheAdapter) implements RuntimeLoaderInterface {
-                private $cacheAdapter;
-                public function __construct($cacheAdapter) { $this->cacheAdapter = $cacheAdapter; }
-                public function load($class) {
-                    if ($class === CacheRuntime::class) {
-                        return new CacheRuntime($this->cacheAdapter);
-                    }
-                    return null;
+        return $twigLoader;
+    }
+
+    /**
+     * Creates the cache runtime loader, using NullAdapter when DISABLE_TWIG_FILE_CACHING is set
+     */
+    private function createCacheRuntimeLoader(): RuntimeLoaderInterface
+    {
+        $cacheAdapter = SSEnvironment::getEnv('DISABLE_TWIG_FILE_CACHING')
+            ? new NullAdapter()
+            : new PhpFilesAdapter('', 0, BASE_PATH . '/twig-partial-cache');
+
+        return new class($cacheAdapter) implements RuntimeLoaderInterface {
+            private $cacheAdapter;
+            public function __construct($cacheAdapter) { $this->cacheAdapter = $cacheAdapter; }
+            public function load($class) {
+                if ($class === CacheRuntime::class) {
+                    return new CacheRuntime($this->cacheAdapter);
                 }
-            });
-
-            return $twig;
-
+                return null;
+            }
         };
+    }
 
-        $this['twig.loader'] = function ($c) {
-            $twigLoader = new $c['twig.loader_class']($c['twig.template_paths']);
-            if (isset($c['twig.template_namespaced_paths'])) {
-                foreach ($c['twig.template_namespaced_paths'] as $path => $namespace) {
-                    $twigLoader->addPath($path, $namespace);
-                }
+    /**
+     * Builds the list of template paths from themes, app dirs, and module config,
+     * filtering to only directories that exist on disk
+     */
+    private function resolveTemplatePaths(): array
+    {
+        $possiblePaths = [];
+
+        foreach (SSViewer::get_themes() as $theme) {
+            if (str_starts_with($theme, '$')) {
+                continue;
             }
+            $possiblePaths[] = THEMES_PATH . '/' . $theme . '/twig';
+        }
 
-            return $twigLoader;
-        };
+        $possiblePaths[] = BASE_PATH . '/app/twig';
+        $possiblePaths[] = BASE_PATH . '/app/templates';
+        $possiblePaths[] = BASE_PATH . '/node_modules';
 
-        // Dynamic props
-        $this['twig.compilation_cache'] = TEMP_FOLDER . '/twig-cache';
-
-        // create some paths to check
-        $actualPaths = [];
-        $possiblePaths = [
-            str_replace(
-                '//',
-                '',
-                (
-                    THEMES_PATH . '/' .
-                    \SilverStripe\Core\Config\Config::inst()->get(
-                        'SilverStripe\View\SSViewer',
-                        'theme'
-                    ) .
-                    '/' .
-                    'twig'
-                )
-            ),
-            BASE_PATH . '/app/twig',
-            BASE_PATH . '/app/templates',
-            BASE_PATH . '/node_modules'
-        ];
-
-        // code to generate paths for templates from modules
-        // $modules = \SilverStripe\Core\Manifest\ModuleLoader::inst()
-        //     ->getManifest()->getModules();
-        // foreach ($modules as $module) {
-        //     $possiblePaths[] = $module->getPath() . '/templates';
-        // }
-
-        // modules inject template paths via the following property
         $possiblePaths = array_merge(
             self::$config['twig.module_template_paths'],
             $possiblePaths,
         );
 
-        // add paths
-        foreach ($possiblePaths as $path) {
-            if (is_dir($path)) {
-                $actualPaths[] = $path;
-            }
-        }
+        return array_values(array_filter($possiblePaths, 'is_dir'));
+    }
 
-        // add the paths to the conf
-        $this['twig.template_paths'] = $actualPaths;
-
-        // Default config
+    /**
+     * Applies default config values, user-registered extensions, and shared services
+     */
+    private function applyUserConfig(): void
+    {
         foreach (self::$config as $key => $value) {
             $this[$key] = $value;
         }
 
-        // Extensions
-        if (is_array(self::$extensions)) {
-            foreach (self::$extensions as $value) {
-                $this->extend($value[0], $value[1]);
-            }
+        foreach (self::$extensions as $value) {
+            $this->extend($value[0], $value[1]);
         }
 
-        // Shared
-        if (is_array(self::$shared)) {
-            foreach (self::$shared as $value) {
-                $this[$value[0]] = $value[1];
-            }
+        foreach (self::$shared as $value) {
+            $this[$value[0]] = $value[1];
         }
     }
 
@@ -184,7 +178,7 @@ class TwigContainer extends Container
      * @param string  $name      Name of service
      * @param Closure $extension Extending function
      */
-    public static function addExtension($name, $extension) {
+    public static function addExtension(string $name, callable $extension): void {
         self::$extensions[] = array($name, $extension);
     }
 
@@ -193,7 +187,7 @@ class TwigContainer extends Container
      * @param string  $name   Name of service
      * @param Closure $shared The shared service function
      */
-    public static function addShared($name, $shared) {
+    public static function addShared(string $name, callable $shared): void {
         self::$shared[] = array($name, $shared);
     }
 
@@ -201,10 +195,8 @@ class TwigContainer extends Container
      * Allows the addition to the default config by the user
      * @param array $config The extending config
      */
-    public static function extendConfig($config) {
-        if (is_array($config)) {
-            self::$config = array_merge_recursive(self::$config, $config);
-        }
+    public static function extendConfig(array $config): void {
+        self::$config = array_merge_recursive(self::$config, $config);
     }
 
     /**
@@ -220,7 +212,7 @@ class TwigContainer extends Container
      * sets the current config
      * @param array $config the config
      */
-    public static function setConfig(array $config)
+    public static function setConfig(array $config): void
     {
         self::$config = $config;
     }

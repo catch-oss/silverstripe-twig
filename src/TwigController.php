@@ -2,11 +2,13 @@
 
 namespace Azt3k\SS\Twig;
 
+use SilverStripe\Control\HTTPRequest;
+
 trait TwigController {
 
     use TwigRenderer;
 
-    public function __get($name)
+    public function __get(string $name): mixed
     {
         if ($name == 'dic') {
             return $this->dic = new TwigContainer;
@@ -15,12 +17,12 @@ trait TwigController {
         }
     }
 
-    public function __isset($name)
+    public function __isset(string $name): bool
     {
         return $this->hasMethod($name) ? false : true;
     }
 
-    public function handleAction($request, $action)
+    public function handleAction(HTTPRequest $request, string $action): mixed
     {
         // urlParams, requestParams, and action are set for backward compatability
         foreach ($request->latestParams() as $k => $v) {
@@ -40,17 +42,17 @@ trait TwigController {
             return $this->httpError(403, "Action '$this->action' isn't allowed on class " . get_class($this));
         }
 
-        if ($this->hasMethod($this->action)) {
-            $result = $this->{$this->action}($request);
-
-            // If the action returns an array, customise with it before rendering the template.
-            if (is_array($result)) {
-                return $this->renderTwig($this->getTemplateList($this->action), $this->customise($result));
-            } else {
-                return $result;
-            }
-        } else {
+        // If no explicit action method exists, render the template directly
+        if (!$this->hasMethod($this->action)) {
             return $this->renderTwig($this->getTemplateList($this->action), $this);
         }
+
+        $result = $this->{$this->action}($request);
+
+        // If the action returns an array, customise with it before rendering the template;
+        // otherwise return the action result as-is (e.g. HTTPResponse, string)
+        return is_array($result)
+            ? $this->renderTwig($this->getTemplateList($this->action), $this->customise($result))
+            : $result;
     }
 }

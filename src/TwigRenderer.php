@@ -1,8 +1,11 @@
 <?php
 
 namespace Azt3k\SS\Twig;
-use \SilverStripe\View\Requirements;
-use \SilverStripe\View\ViewableData;
+
+use SilverStripe\View\Requirements;
+use SilverStripe\Model\ModelData;
+use SilverStripe\ORM\FieldType\DBHTMLText;
+use Twig\TemplateWrapper;
 
 trait TwigRenderer {
 
@@ -11,12 +14,7 @@ trait TwigRenderer {
      */
     protected $includeRequirements = true;
 
-    /**
-     * [__get description]
-     * @param  [type] $name [description]
-     * @return [type]       [description]
-     */
-    public function __get($name) {
+    public function __get(string $name): mixed {
 
         if ($name == 'dic') {
             return $this->dic = new TwigContainer;
@@ -25,48 +23,36 @@ trait TwigRenderer {
         }
     }
 
-    /**
-     * [__isset description]
-     * @param  [type]  $name [description]
-     * @return boolean       [description]
-     */
-    public function __isset($name) {
+    public function __isset(string $name): bool {
 
         return $this->hasMethod($name) ? false : true;
     }
 
     /**
      * Overrides the renderWith method for DOs
-     * @param  [type] $templates    [description]
-     * @param  [type] $customFields [description]
-     * @return [type]               [description]
      */
-    public function renderWith($templates, $customFields = null) {
+    public function renderWith($template, ModelData|array $customFields = []): DBHTMLText {
 
         $data = ($this->customisedObject) ? $this->customisedObject : $this;
 
-        if (is_array($customFields) || $customFields instanceof ViewableData) {
+        if (is_array($customFields) || $customFields instanceof ModelData) {
             $data = $data->customise($customFields);
         }
 
-        if (!is_array($templates)) {
-            $templates = [$templates];
-        }
+        $templates = is_array($template) ? $template : [$template];
 
         try {
-            return $this->renderTwig($templates, $data);
+            $html = $this->renderTwig($templates, $data);
+            $field = DBHTMLText::create();
+            $field->setValue($html);
+            return $field;
         } catch (\InvalidArgumentException $e) {
-            return parent::renderWith($templates, $customFields);
+            return parent::renderWith($template, $customFields);
         }
 
     }
 
-    /**
-     * [render description]
-     * @param  [type] $params [description]
-     * @return [type]         [description]
-     */
-    public function render($params = null) {
+    public function render(mixed $params = null): DBHTMLText {
 
         $obj = ($this->customisedObj) ? $this->customisedObj : $this;
         if ($params) {
@@ -77,13 +63,17 @@ trait TwigRenderer {
             ? $this->getAction()
             : null;
 
-        return $this->renderTwig(
+        $html = $this->renderTwig(
             $this->getTemplateList($action),
             $obj
         );
+
+        $field = DBHTMLText::create();
+        $field->setValue($html);
+        return $field;
     }
 
-    protected function renderTwig($templates, $context) {
+    protected function renderTwig(array $templates, mixed $context): string {
         $render = $this->getTwigTemplate($templates)->render([
             $this->dic['twig.controller_variable_name'] => $context
         ]);
@@ -95,7 +85,7 @@ trait TwigRenderer {
         return $render;
     }
 
-    public function customise($params) {
+    public function customise(mixed $params): static {
 
         if (is_array($params)) {
             foreach ($params as $key => $value) {
@@ -106,54 +96,72 @@ trait TwigRenderer {
         return $this;
     }
 
-    protected function getTwigTemplate($templates) {
+    protected function getTwigTemplate(array $templates): TemplateWrapper {
+
+        $templates = $this->applyExtensionResult('ModifyTwigTemplates', $templates) ?? $templates;
+
+        if (!$templates) {
+            throw new \InvalidArgumentException("No templates available, perhaps the extension is borked");
+        }
 
         $loader = $this->dic['twig.loader'];
-        $extensions = $this->dic['twig.extensions'];
-        $ret = $this->extend('ModifyTwigTemplates', $templates);
-        if(is_array($ret) && count($ret) > 0) $templates = $ret[0];
-
-        if(!is_array($templates) || count($templates) == 0) {
-            throw new \InvalidArgumentException("No templates available, perhaps the extension if borked ");
-        }
+        $extensions = (array) $this->dic['twig.extensions'];
 
         foreach ($templates as $value) {
-
-            // catches scenarios when a template is supplied as:
-            // Array
-            // (
-            //     [type] => Includes
-            //     [0] => SilverStripe\Security\Security_login
-            // )
-            if (is_array($value)) $value = $value[0];
-
-            $ret = $this->extend('ModifyTwigTemplate', $value);
-            if(is_array($ret) && count($ret) && is_string($ret[0])) {
-                $value = $ret[0];
-            }
-
-            if ($extensions) {
-                if (!is_array($extensions)) {
-                    $extensions = [$extensions];
-                }
-                foreach ((array) $extensions as $extension) {
-                    if ($loader->exists($value . $extension)) {
-                        // Twig 3: loadTemplate internal signature changed; use load() instead
-                        return $this->dic['twig']->load($value . $extension);
-                    }
-                }
+            $value = $this->resolveTemplateName($value);
+            $loaded = $this->findLoadableTemplate($loader, $extensions, $value);
+            if ($loaded !== null) {
+                return $loaded;
             }
         }
+
         throw new \InvalidArgumentException("No templates for " . print_r($templates, 1) . " exist");
     }
 
     /**
-     * [buildTemplatesFromClassName description]
-     * @param  [type] $className [description]
-     * @param  [type] $action    [description]
-     * @return [type]            [description]
+     * Extracts the first valid string result from an extension hook call
      */
-    public function buildTemplatesFromClassName($className, $action = null) {
+    private function applyExtensionResult(string $hook, mixed ...$args): mixed
+    {
+        $ret = $this->extend($hook, ...$args);
+        return !empty($ret) ? $ret[0] : null;
+    }
+
+    /**
+     * Normalises a template entry — handles both string names and SS-style arrays
+     * like ['type' => 'Includes', 0 => 'SilverStripe\Security\Security_login']
+     */
+    private function resolveTemplateName(mixed $value): string
+    {
+        if (is_array($value)) {
+            $value = $value[0];
+        }
+
+        $override = $this->applyExtensionResult('ModifyTwigTemplate', $value);
+        if (is_string($override)) {
+            $value = $override;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Tries each registered file extension to find a loadable template
+     */
+    private function findLoadableTemplate($loader, array $extensions, string $name): ?TemplateWrapper
+    {
+        foreach ($extensions as $extension) {
+            if ($loader->exists($name . $extension)) {
+                return $this->dic['twig']->load($name . $extension);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Build template list from class hierarchy
+     */
+    public function buildTemplatesFromClassName(string $className, ?string $action = null): array {
 
         // init templates
         $templates = [];
@@ -187,12 +195,7 @@ trait TwigRenderer {
         return $templates;
     }
 
-    /**
-     * [getTemplateList description]
-     * @param  [type] $action [description]
-     * @return [type]         [description]
-     */
-    protected function getTemplateList($action = null) {
+    protected function getTemplateList(?string $action = null): array {
 
         // Hard-coded templates
         if (!empty($this->templates[$action])) {
@@ -200,14 +203,17 @@ trait TwigRenderer {
         } elseif (!empty($this->templates['index'])) {
             $templates = $this->templates['index'];
         } elseif (!empty($this->template)) {
-            $templates = $this->template;
+            $templates = is_array($this->template) ? $this->template : [$this->template];
         } else {
             // build template list
             // get_class and $this->className return different things sometimes
-            $templates = array_unique(array_merge(
-                $this->buildTemplatesFromClassName(get_class($this), $action),
-                $this->buildTemplatesFromClassName($this->ClassName, $action)
-            ));
+            $templates = $this->buildTemplatesFromClassName(get_class($this), $action);
+            if (!empty($this->ClassName) && $this->ClassName !== get_class($this)) {
+                $templates = array_unique(array_merge(
+                    $templates,
+                    $this->buildTemplatesFromClassName($this->ClassName, $action)
+                ));
+            }
         }
 
         // if the current class has a getHTMLTemplate method try it

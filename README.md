@@ -1,12 +1,12 @@
-# Twig templates for SilverStripe 5
+# Twig templates for SilverStripe
 
 <!-- PROJECT SHIELDS -->
 [![SonarCloud](https://github.com/catch-oss/silverstripe-twig/actions/workflows/sonar.yml/badge.svg)](https://github.com/catch-oss/silverstripe-twig/actions/workflows/sonar.yml)
 [![Test](https://github.com/catch-oss/silverstripe-twig/actions/workflows/test.yml/badge.svg)](https://github.com/catch-oss/silverstripe-twig/actions/workflows/test.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=catch-design_catch-oss-silverstripe-twig)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=coverage)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=bugs)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=code_smells)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=coverage)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
 [![Duplicated Lines Density](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=duplicated_lines_density)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=ncloc)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=reliability_rating)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
@@ -15,9 +15,16 @@
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=sqale_rating)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=catch-design_catch-oss-silverstripe-twig&metric=vulnerabilities)](https://sonarcloud.io/component_measures?id=catch-design_catch-oss-silverstripe-twig)
 
+## Compatibility
+
+| Version | Silverstripe | PHP |
+|---------|-------------|-----|
+| release/6 | ^6.0 | ^8.5 |
+| release/5 | ^5.0 | ^8.1 |
+
 ## Overview
 
-SilverStripe Twig enables the use of the Twig templating engine in SilverStripe 5
+SilverStripe Twig enables the use of the Twig templating engine in SilverStripe
 
 If you are not familiar with Twig, check out the [docs](http://twig.sensiolabs.org/).
 
@@ -25,18 +32,9 @@ If you are not familiar with Twig, check out the [docs](http://twig.sensiolabs.o
 
 ### Composer
 
-Create or edit a `composer.json` file in the root of your SilverStripe project, and make sure the following is present.
-
-```json
-{
-  "require": {
-    "camspiers/silverstripe-twig": "0.0.*",
-    "camspiers/autoloader-composer-silverstripe": "1.0.*"
-  }
-}
+```bash
+composer require azt3k/silverstripe-twig
 ```
-
-After completing this step, navigate in Terminal or similar to the SilverStripe root directory and run `composer install` or `composer update` depending on whether or not you have composer already in use.
 
 ## Getting started
 
@@ -52,26 +50,34 @@ For example, for page of PageType `Page`. If there is a `Page.twig` template in 
 
 ### How to enable twig
 
-Twig rendering is enabled by extending the functionality of your SilverStripe controller. This can be done in two ways depending on what version of PHP you have.
-
-#### PHP 5.4
-
-The PHP 5.3 classes above are actually auto-generated from a trait. To use the trait add a `use` statement in your controller as follows:
+Twig rendering is enabled by adding the `TwigController` trait to your controller:
 
 ```php
-class Page_Controller extends ContentController
+use Azt3k\SS\Twig\TwigController;
+
+class PageController extends ContentController
 {
-  use TwigControllerTrait;
+  use TwigController;
 }
 ```
 
 or:
 
 ```php
+use Azt3k\SS\Twig\TwigController;
+
 class MyController extends Controller
 {
-  use TwigControllerTrait;
+  use TwigController;
 }
+```
+
+Alternatively, apply the `TwigControllerExtension` via YAML config to add Twig rendering without modifying your controller class:
+
+```yaml
+SilverStripe\CMS\Controllers\ContentController:
+  extensions:
+    twig: Azt3k\SS\Twig\TwigControllerExtension
 ```
 
 ### Accessing your Controller in twig
@@ -114,7 +120,7 @@ Silverstripe global functions/variables will be available on the variable `g`.
 
 ### Rendering HTML Generating Controller Methods
 
-- SS4 changes the `__toString` behaviour for `ViewableData` objects to use `static::class` rather than `$this->forTemplate()`
+- SS changes the `__toString` behaviour for `ModelData` objects to use `static::class` rather than `$this->forTemplate()`
 - We need to dump the raw HTML value or we get escaped output
 
 ```jinja
@@ -180,7 +186,7 @@ SilverStripe Twig uses a dependency injection container (an extension of `Pimple
 
 An example:
 
-`mysite/_config.php`
+`app/_config.php`
 
 ```php
 TwigContainer::extendConfig([
@@ -272,8 +278,8 @@ Example:
 
 This project follows the standards defined in:
 
-- [PSR-1](https://github.com/pmjones/fig-standards/blob/psr-1-style-guide/proposed/PSR-1-basic.md)
-- [PSR-2](https://github.com/pmjones/fig-standards/blob/psr-1-style-guide/proposed/PSR-2-advanced.md)
+- [PSR-1](https://www.php-fig.org/psr/psr-1/)
+- [PSR-12](https://www.php-fig.org/psr/psr-12/)
 
 ---
 

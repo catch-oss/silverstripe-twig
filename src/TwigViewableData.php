@@ -2,15 +2,14 @@
 
 namespace Azt3k\SS\Twig;
 
-use IOD\Util\Debug;
 use SilverStripe\Control\Director;
-use SilverStripe\View\ViewableData;
+use SilverStripe\Model\ModelData;
 
-class TwigViewableData extends ViewableData
+class TwigViewableData extends ModelData
 {
     use TwigRenderer;
 
-    public function AbsoluteLink($path)
+    public function AbsoluteLink(string $path): string
     {
         return trim(Director::absoluteBaseURL(), '/') . $path;
     }

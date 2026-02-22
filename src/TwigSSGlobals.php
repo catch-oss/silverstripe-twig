@@ -3,13 +3,13 @@
 namespace Azt3k\SS\Twig;
 
 use SilverStripe\Core\ClassInfo;
-use SilverStripe\View\ViewableData;
+use SilverStripe\Model\ModelData;
 use SilverStripe\View\TemplateGlobalProvider;
 
 class TwigSSGlobals
 {
 
-    protected $globals;
+    protected array $globals;
 
     /**
      * Loads the global vars
@@ -30,7 +30,7 @@ class TwigSSGlobals
                     if (!is_array($details)) {
                         $details = [
                             'method' => $details,
-                            'casting' => ViewableData::config()->uninherited('default_cast')
+                            'casting' => ModelData::config()->uninherited('default_cast')
                         ];
                     }
 
@@ -61,24 +61,18 @@ class TwigSSGlobals
 
     /**
      * Test for the property the customer is interested in
-     *
-     * @param  String $name Property name
-     * @return Boolean      Whether it exists or not
      */
-    public function __isset($name) {
+    public function __isset(string $name): bool {
         return isset($this->globals[$name]);
     }
 
     /**
-     * Get the property the customer is interested
-     *
-     * @param  String $name Property name
-     * @return Mixed       The property requested or null
+     * Get the property the customer is interested in
      */
-    public function __get($name) {
+    public function __get(string $name): mixed {
 
         // test if exist
-        if ($this->globals[$name]) {
+        if (isset($this->globals[$name])) {
 
             // return if cached
             if (isset($this->globals[$name]['instance'])) {
@@ -104,7 +98,4 @@ class TwigSSGlobals
             return null;
         }
     }
-
-
-
 }
