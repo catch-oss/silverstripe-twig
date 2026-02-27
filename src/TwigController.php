@@ -2,8 +2,6 @@
 
 namespace Azt3k\SS\Twig;
 
-use SilverStripe\Control\HTTPRequest;
-
 trait TwigController {
 
     use TwigRenderer;
@@ -22,7 +20,7 @@ trait TwigController {
         return $this->hasMethod($name) ? false : true;
     }
 
-    public function handleAction(HTTPRequest $request, string $action): mixed
+    protected function handleAction($request, $action)
     {
         // urlParams, requestParams, and action are set for backward compatability
         foreach ($request->latestParams() as $k => $v) {
